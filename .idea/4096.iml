@@ -4,8 +4,6 @@
     <content url="file://$MODULE_DIR$" />
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="Snake Game" />
-    <orderEntry type="module" module-name="killer" />
-    <orderEntry type="module" module-name="DigiClient" />
+    <orderEntry type="module" module-name="testing" />
   </component>
 </module>
