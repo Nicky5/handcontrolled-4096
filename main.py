@@ -209,6 +209,9 @@ while running:
             if event.key == pg.K_s:
                 set.save_settings()
 
+            if event.key == pg.K_RSHIFT:
+                pieces.append(piece())
+
             if event.key == pg.K_UP or event.key == pg.K_DOWN or event.key == pg.K_LEFT or event.key == pg.K_RIGHT:
                 if not animation_start + set.animation_time > time.time():
                     animation_start = time.time()
