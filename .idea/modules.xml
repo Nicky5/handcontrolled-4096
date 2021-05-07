@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/4096.iml" filepath="$PROJECT_DIR$/.idea/4096.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../DigiClient/.idea/DigiClient.iml" filepath="$PROJECT_DIR$/../DigiClient/.idea/DigiClient.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../Snake Game/.idea/Snake Game.iml" filepath="$PROJECT_DIR$/../Snake Game/.idea/Snake Game.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../killer/.idea/killer.iml" filepath="$PROJECT_DIR$/../killer/.idea/killer.iml" />
+    </modules>
+  </component>
+</project>
