@@ -20,6 +20,7 @@ class set:
     best_score = data["highscore"]
     font_color1 = data[mode]["fontColor1"]
     font_color2 = data[mode]["fontColor2"]
+    fps = data["fps"]
 
     @staticmethod
     def update_settings(only_colors=False):
@@ -37,6 +38,7 @@ class set:
         set.size = data["size"]
         set.font = data["font"]
         set.best_score = data["highscore"]
+        set.fps = data["fps"]
 
 
     @staticmethod
@@ -67,40 +69,15 @@ canvas = pg.Surface((side_lenght, side_lenght))
 pg.font.init()
 myfont = pg.font.SysFont(set.font, 30)
 
-fonts = [pg.font.SysFont(set.font, 100 - (0 * 20)),
-         pg.font.SysFont(set.font, 100 - (1 * 20)),
-         pg.font.SysFont(set.font, 100 - (2 * 20)),
-         pg.font.SysFont(set.font, 100 - (3 * 20)),
-         pg.font.SysFont(set.font, 100 - (4 * 20)),
-         pg.font.SysFont(set.font, 100 - (5 * 20)),
-         pg.font.SysFont(set.font, 100 - (6 * 20)),
-         pg.font.SysFont(set.font, 100 - (7 * 20)),
-         pg.font.SysFont(set.font, 100 - (8 * 20)),
-         pg.font.SysFont(set.font, 100 - (9 * 20))]
-
-
-def dbg_label(Print=False, *args, **kwargs):
-    label = myfont.render(f"{args, kwargs}", True, set.COLOR2)
-    fill_block(screen, (set.BACKGROUND, ((0, 0), (screen.get_width(), 30))))
-    screen.blit(label, (0, 0))
-    if Print:
-        print(args, kwargs)
+fonts = [pg.font.SysFont(set.font, 100 - (i * 20)) for i in range(10)]
 
 def Label(pos, args):
     label = myfont.render(f"{args}", True, set.font_color2)
-    fill_block(screen, (set.BACKGROUND, (pos, (screen.get_width(), 30))))
+    screen.fill(set.BACKGROUND, (pos, (screen.get_width(), 30)))
     screen.blit(label, pos)
 
 def get_animation_progres():
     return - ((animation_start - time.time()) * (1 / set.animation_time))
-
-def fill_block(frame, Input):
-    (r, g, b), ((x, y), (i, j)) = Input
-    if x < 0:
-        i -= 0 - x
-    if y < 0:
-        j -= 0 - y
-    frame.fill((r, g, b), ((x, y), (i, j)))
 
 def get_piece_start(piece):
     return (piece * (piece_lenght + width)) + width
@@ -130,12 +107,14 @@ def after_animation():
     for i in to_upgrade:
         for x in pieces:
             if i == x.id:
-                x.upfate_value()
+                x.update_value()
                 piece.game_score += int(x.value)
     if piece.game_score > set.best_score:
         set.best_score = piece.game_score
     pieces.append(piece())
     to_upgrade.clear()
+    for i in pieces:
+        i.update_value()
 
 class piece:
     game_score = 0
@@ -143,14 +122,12 @@ class piece:
 
     def __init__(self):
         self.id = random.randint(0, 2147483647)
-        self.moving = False
         self.power = 1
         self.grid_y, self.grid_x = get_free_spawn()
         self.x, self.y = (get_piece_start(self.grid_x), get_piece_start(self.grid_y))
         self.prev_x, self.prev_y = self.get_temp_x(), self.get_temp_y()
         self.value = 2
-        self.priority = 0
-        self.upfate_value()
+        self.update_value()
 
     def move(self, y, x):
         if (y, x) == (self.grid_y, self.grid_x):
@@ -170,9 +147,8 @@ class piece:
         canvas.blit(textsurface, (self.get_x() + (piece_lenght // 2) - (textsurface.get_width() // 2),
                                   self.get_y() + (piece_lenght // 2) - (textsurface.get_height() // 2)))
 
-    def upfate_value(self):
+    def update_value(self):
         self.value = str(int(math.pow(2, self.power)))
-        self.color = self.get_color()
 
     def get_temp_x(self):
         return get_piece_start(self.grid_x)
@@ -237,12 +213,9 @@ while running:
                 if not animation_start + set.animation_time > time.time():
                     animation_start = time.time()
                     if event.key == pg.K_UP:
-                        priority = 0
                         for y in range(4):
                             for x in range(4):
                                 if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    get_piece(y, x).priority = priority
-                                    priority += 1
                                     free_spot = y
                                     for i in range(y, -1, -1):
                                         if get_piece(i, x) is None:
@@ -255,12 +228,9 @@ while running:
                                         get_piece(y, x).move(free_spot, x)
 
                     if event.key == pg.K_DOWN:
-                        priority = 0
                         for y in range(3, -1, -1):
                             for x in range(3, -1, -1):
                                 if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    get_piece(y, x).priority = priority
-                                    priority += 1
                                     free_spot = y
                                     for i in range(y, 4):
                                         if get_piece(i, x) is None:
@@ -273,12 +243,9 @@ while running:
                                         get_piece(y, x).move(free_spot, x)
 
                     if event.key == pg.K_LEFT:
-                        priority = 0
                         for x in range(4):
                             for y in range(4):
                                 if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    get_piece(y, x).priority = priority
-                                    priority += 1
                                     free_spot = x
                                     for i in range(x, -1, -1):
                                         if get_piece(y, i) is None:
@@ -292,12 +259,9 @@ while running:
                                         get_piece(y, x).move(y, free_spot)
 
                     if event.key == pg.K_RIGHT:
-                        priority = 0
                         for x in range(3, -1, -1):
                             for y in range(3, -1, -1):
                                 if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    get_piece(y, x).priority = priority
-                                    priority += 1
                                     free_spot = x
                                     for i in range(x, 4):
                                         if get_piece(y, i) is None:
@@ -309,9 +273,7 @@ while running:
                     thread = threading.Thread(target=after_animation)
                     thread.start()
 
-    if elapsed_time > 0.05:
-        frame += 1
-
+    if elapsed_time > (1 / set.fps):
         screen.fill(set.BACKGROUND)
         canvas.fill(set.COLOR1)
         for i in range(6):
@@ -319,13 +281,10 @@ while running:
                          (i * (side_lenght - width) / 4 + (width // 2), side_lenght), width)
             pg.draw.line(canvas, set.COLOR2, (0, i * (side_lenght - width) / 4 + (width // 2)),
                          (side_lenght, i * (side_lenght - width) / 4 + (width // 2)), width)
-
         for i in obstacles:
             i.render()
-
         for i in pieces:
             i.render()
-
         screen.blit(canvas, (getGroundStart(), getGroundStart()))
         Label((screen.get_width() // 2 - canvas.get_width() // 2, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Score: " + str(piece.game_score))
         Label((screen.get_width() // 2 - canvas.get_width() // 2 + 200, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Highscore: " + str(set.best_score))
