@@ -4,11 +4,20 @@ import random
 import threading
 import time
 
+import cv2
 import pygame as pg
+
+hand_detection = True
+cam = pg.Surface((640, 480))
+indikator = pg.Surface((40, 40))
+loop_on = True
+Hand_open = False
+cam_fps = 0
 
 data = json.load(open('settings.json'))
 
 class set:
+    loop_on = True
     mode = data["mode"]
     BACKGROUND = data[mode]["background"]
     COLOR1 = data[mode]["color1"]
@@ -20,7 +29,6 @@ class set:
     best_score = data["highscore"]
     font_color1 = data[mode]["fontColor1"]
     font_color2 = data[mode]["fontColor2"]
-    fps = data["fps"]
 
     @staticmethod
     def update_settings(only_colors=False):
@@ -38,16 +46,9 @@ class set:
         set.size = data["size"]
         set.font = data["font"]
         set.best_score = data["highscore"]
-        set.fps = data["fps"]
 
-
-    @staticmethod
-    def save_settings():
-        data["mode"] = set.mode
-        data["animationTime"] = set.animation_time
-        data["size"] = (screen.get_width(), screen.get_height())
-        data["highscore"] = set.best_score
-        json.dump(data, open('settings.json', 'w'))
+indikator.fill(set.BACKGROUND)
+pg.draw.circle(indikator, (255, 0, 0), (20, 20), 20)
 
 pg.init()
 screen = pg.display.set_mode(set.size, pg.RESIZABLE)
@@ -179,117 +180,129 @@ class piece:
         self.prev_y = self.get_temp_y()
         return self.get_temp_y()
 
-def getGroundStart():
-    return screen.get_width() // 2 - 384, screen.get_height() // 2 - 384
+def get_ground_start():
+    return screen.get_width() // 4 - 384, screen.get_height() // 2 - 384
 
-pieces.append(piece())
-while running:
-    current_time = time.time()
-    elapsed_time = current_time - start_time
+def move_piece(inp):
+    print(inp)
+    if inp == pg.K_UP or inp == 'up':
+        for y in range(4):
+            for x in range(4):
+                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
+                    free_spot = y
+                    for i in range(y, -1, -1):
+                        if get_piece(i, x) is None:
+                            free_spot = i
+                    if get_piece(free_spot - 1, x) is not None and get_piece(y, x).power == get_piece(
+                            free_spot - 1, x).power and to_upgrade.count(get_piece(
+                        free_spot - 1, x).id) == 0:
+                        get_piece(y, x).move(free_spot - 1, x)
+                    else:
+                        get_piece(y, x).move(free_spot, x)
 
-    for event in pg.event.get():
-        if event.type == pg.QUIT:
-            running = False
-            set.save_settings()
+    if inp == pg.K_DOWN or inp == 'down':
+        for y in range(3, -1, -1):
+            for x in range(3, -1, -1):
+                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
+                    free_spot = y
+                    for i in range(y, 4):
+                        if get_piece(i, x) is None:
+                            free_spot = i
+                    if get_piece(free_spot + 1, x) is not None and get_piece(y, x).power == get_piece(
+                            free_spot + 1, x).power and to_upgrade.count(get_piece(
+                        free_spot + 1, x).id) == 0:
+                        get_piece(y, x).move(free_spot + 1, x)
+                    else:
+                        get_piece(y, x).move(free_spot, x)
 
-        if event.type == pg.KEYDOWN:
-            if event.key == pg.K_ESCAPE:
-                running = False
-                set.save_settings()
+    if inp == pg.K_LEFT or inp == 'left':
+        for x in range(4):
+            for y in range(4):
+                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
+                    free_spot = x
+                    for i in range(x, -1, -1):
+                        if get_piece(y, i) is None:
+                            free_spot = i
+                    if get_piece(y, free_spot - 1) is not None and get_piece(y, x).power == get_piece(y,
+                                                                                                      free_spot - 1).power and to_upgrade.count(
+                        get_piece(
+                            y, free_spot - 1).id) == 0:
+                        get_piece(y, x).move(y, free_spot - 1)
+                    else:
+                        get_piece(y, x).move(y, free_spot)
 
-            if event.key == pg.K_TAB:
-                if set.mode == "light":
-                    set.mode = "dark"
-                else: set.mode = "light"
-                set.update_settings(True)
+    if inp == pg.K_RIGHT or inp == 'right':
+        for x in range(3, -1, -1):
+            for y in range(3, -1, -1):
+                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
+                    free_spot = x
+                    for i in range(x, 4):
+                        if get_piece(y, i) is None:
+                            free_spot = i
+                    if get_piece(y, free_spot + 1) is not None and get_piece(y, x).power == get_piece(y,
+                                                                                                      free_spot + 1).power and to_upgrade.count(
+                            get_piece(y, free_spot + 1).id) == 0:
+                        get_piece(y, x).move(y, free_spot + 1)
+                    else:
+                        get_piece(y, x).move(y, free_spot)
 
-            if event.key == pg.K_r:
-                set.update_settings()
+def game_loop():
+    pieces.append(piece())
+    while set.loop_on:
+        current_time = time.time()
+        elapsed_time = current_time - start_time
 
-            if event.key == pg.K_s:
-                set.save_settings()
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                set.loop_on = False
+                cv2.destroyAllWindows()
 
-            if event.key == pg.K_RSHIFT:
-                pieces.append(piece())
+            if event.type == pg.KEYDOWN:
+                if event.key == pg.K_ESCAPE:
+                    set.loop_on = False
+                    cv2.destroyAllWindows()
 
-            if event.key == pg.K_UP or event.key == pg.K_DOWN or event.key == pg.K_LEFT or event.key == pg.K_RIGHT:
-                if not animation_start + set.animation_time > time.time():
-                    animation_start = time.time()
-                    if event.key == pg.K_UP:
-                        for y in range(4):
-                            for x in range(4):
-                                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    free_spot = y
-                                    for i in range(y, -1, -1):
-                                        if get_piece(i, x) is None:
-                                            free_spot = i
-                                    if get_piece(free_spot - 1, x) is not None and get_piece(y, x).power == get_piece(
-                                            free_spot - 1, x).power and to_upgrade.count(get_piece(
-                                            free_spot - 1, x).id) == 0:
-                                        get_piece(y, x).move(free_spot - 1, x)
-                                    else:
-                                        get_piece(y, x).move(free_spot, x)
+                if event.key == pg.K_TAB:
+                    if set.mode == "light":
+                        set.mode = "dark"
+                    else: set.mode = "light"
+                    set.update_settings(True)
 
-                    if event.key == pg.K_DOWN:
-                        for y in range(3, -1, -1):
-                            for x in range(3, -1, -1):
-                                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    free_spot = y
-                                    for i in range(y, 4):
-                                        if get_piece(i, x) is None:
-                                            free_spot = i
-                                    if get_piece(free_spot + 1, x) is not None and get_piece(y, x).power == get_piece(
-                                            free_spot + 1, x).power and to_upgrade.count(get_piece(
-                                            free_spot + 1, x).id) == 0:
-                                        get_piece(y, x).move(free_spot + 1, x)
-                                    else:
-                                        get_piece(y, x).move(free_spot, x)
+                if event.key == pg.K_r:
+                    set.update_settings()
 
-                    if event.key == pg.K_LEFT:
-                        for x in range(4):
-                            for y in range(4):
-                                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    free_spot = x
-                                    for i in range(x, -1, -1):
-                                        if get_piece(y, i) is None:
-                                            free_spot = i
-                                    if get_piece(y, free_spot - 1) is not None and get_piece(y, x).power == get_piece(y,
-                                                                                                                      free_spot - 1).power and to_upgrade.count(
-                                            get_piece(
-                                                    y, free_spot - 1).id) == 0:
-                                        get_piece(y, x).move(y, free_spot - 1)
-                                    else:
-                                        get_piece(y, x).move(y, free_spot)
+                if event.key == pg.K_RSHIFT:
+                    pieces.append(piece())
 
-                    if event.key == pg.K_RIGHT:
-                        for x in range(3, -1, -1):
-                            for y in range(3, -1, -1):
-                                if get_piece(y, x) is not None and to_upgrade.count(get_piece(y, x).id) == 0:
-                                    free_spot = x
-                                    for i in range(x, 4):
-                                        if get_piece(y, i) is None:
-                                            free_spot = i
-                                    if get_piece(y, free_spot + 1) is not None and get_piece(y, x).power == get_piece(y, free_spot + 1).power and to_upgrade.count(get_piece(y, free_spot + 1).id) == 0:
-                                        get_piece(y, x).move(y, free_spot + 1)
-                                    else:
-                                        get_piece(y, x).move(y, free_spot)
-                    thread = threading.Thread(target=after_animation)
-                    thread.start()
+                if event.key == pg.K_UP or event.key == pg.K_DOWN or event.key == pg.K_LEFT or event.key == pg.K_RIGHT:
+                    # if not animation_start + set.animation_time > time.time():
+                        animation_start = time.time()
+                        # move_piece(event.key)
+                        threading.Thread(target=move_piece, args=event.key).start()
+                        threading.Thread(target=after_animation).start()
 
-    if elapsed_time > (1 / set.fps):
-        screen.fill(set.BACKGROUND)
-        canvas.fill(set.COLOR1)
-        for i in range(6):
-            pg.draw.line(canvas, set.COLOR2, (i * (side_lenght - width) / 4 + (width // 2), 0),
-                         (i * (side_lenght - width) / 4 + (width // 2), side_lenght), width)
-            pg.draw.line(canvas, set.COLOR2, (0, i * (side_lenght - width) / 4 + (width // 2)),
-                         (side_lenght, i * (side_lenght - width) / 4 + (width // 2)), width)
-        for i in obstacles:
-            i.render()
-        for i in pieces:
-            i.render()
-        screen.blit(canvas, (getGroundStart(), getGroundStart()))
-        Label((screen.get_width() // 2 - canvas.get_width() // 2, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Score: " + str(piece.game_score))
-        Label((screen.get_width() // 2 - canvas.get_width() // 2 + 200, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Highscore: " + str(set.best_score))
-        Label((screen.get_width() // 2 - canvas.get_width() // 2 + 500, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Moves: " + str(piece.moves))
-        pg.display.update()
+        if elapsed_time > (1 / 1):
+            screen.fill(set.BACKGROUND)
+            canvas.fill(set.COLOR1)
+            for i in range(6):
+                pg.draw.line(canvas, set.COLOR2, (i * (side_lenght - width) / 4 + (width // 2), 0),
+                             (i * (side_lenght - width) / 4 + (width // 2), side_lenght), width)
+                pg.draw.line(canvas, set.COLOR2, (0, i * (side_lenght - width) / 4 + (width // 2)),
+                             (side_lenght, i * (side_lenght - width) / 4 + (width // 2)), width)
+            for i in obstacles:
+                i.render()
+            for i in pieces:
+                i.render()
+            screen.blit(canvas, (get_ground_start(), get_ground_start()))
+            Label((screen.get_width() // 4 - canvas.get_width() // 2, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Score: " + str(piece.game_score))
+            Label((screen.get_width() // 4 - canvas.get_width() // 2 + 200, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Highscore: " + str(set.best_score))
+            Label((screen.get_width() // 4 - canvas.get_width() // 2 + 500, screen.get_height() // 2 - canvas.get_width() // 2 - 50), "Moves: " + str(piece.moves))
+
+            screen.blit(cam, (screen.get_width() // 2 + 0, screen.get_height() // 2 - 264))
+            Label((screen.get_width() // 4 - canvas.get_width() // 2 + 700, screen.get_height() // 2 - canvas.get_width() // 2 - 50), f'FPS: {int(cam_fps)}')
+            Label((screen.get_width() // 4 - canvas.get_width() // 2, screen.get_height() // 2 - canvas.get_width() // 2 - 100), 'https://github.com/Nicky5/handcontrolled-4096')
+            if Hand_open:
+                screen.blit(indikator, (screen.get_width() // 4 - canvas.get_width() // 2 + 700, screen.get_height() // 2 - canvas.get_width() // 2 - 100))
+
+            pg.display.update()
+            print('game loop')
